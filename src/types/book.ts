@@ -1,3 +1,4 @@
+
 export interface Book {
   id: string;
   title: string;
@@ -12,4 +13,5 @@ export interface Book {
   ratingsCount?: number;
   previewLink?: string;
   infoLink?: string;
+  dataAiHint?: string; // For AI image hint generation
 }
