@@ -18,29 +18,11 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
       {
-        protocol: 'http',
-        hostname: 'books.google.com',
+        protocol: 'https', // Open Library covers are typically served over HTTPS
+        hostname: 'covers.openlibrary.org',
         port: '',
-        pathname: '/books/content/**',
+        pathname: '/b/**', // Covers path: /b/id/{cover_id}-S|M|L.jpg or /b/isbn/{isbn}-S|M|L.jpg
       },
-      {
-        protocol: 'https',
-        hostname: 'books.google.com',
-        port: '',
-        pathname: '/books/content/**',
-      },
-      {
-        protocol: 'http',
-        hostname: 'books.google.com',
-        port: '',
-        pathname: '/books/publisher/content/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'books.google.com',
-        port: '',
-        pathname: '/books/publisher/content/**',
-      }
     ],
   },
 };
