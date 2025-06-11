@@ -1,18 +1,18 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect, useCallback } from 'react';
 import BookSearchForm from '@/components/book/BookSearchForm';
 import BookCard from '@/components/book/BookCard';
 import type { Book } from '@/types/book';
-import { searchBooks } from '@/lib/book-api';
+import { searchBooks, type PaginatedBookResults } from '@/lib/book-api';
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 
 const RESULTS_PER_PAGE = 20;
 
-export default function HomePage() {
+function HomePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -28,18 +28,18 @@ export default function HomePage() {
     setIsLoading(true);
     setError(null);
     
-    // Update URL
     const params = new URLSearchParams();
     if (query) params.set('q', query);
     if (page > 1) params.set('p', page.toString());
+    // Update URL without re-triggering a full navigation, searchParams will update
     router.push(`/?${params.toString()}`, { scroll: false });
 
     try {
-      const results = await searchBooks(query, page, RESULTS_PER_PAGE);
+      const results: PaginatedBookResults = await searchBooks(query, page, RESULTS_PER_PAGE);
       setSearchResults(results.books);
       setTotalResults(results.numFound);
-      setCurrentQuery(query);
-      setCurrentPage(results.currentPage);
+      setCurrentQuery(query); // Reflects the query for which data was fetched
+      setCurrentPage(results.currentPage); // Reflects the page for which data was fetched
     } catch (e) {
       console.error("Search failed:", e);
       setError("Failed to fetch books. Please try again later.");
@@ -54,23 +54,33 @@ export default function HomePage() {
     const queryFromUrl = searchParams.get('q') || '';
     const pageFromUrl = parseInt(searchParams.get('p') || '1', 10);
 
-    // Fetch books if query or page changed, or on initial load with a query
-    if (queryFromUrl !== currentQuery || pageFromUrl !== currentPage || (queryFromUrl && searchResults.length === 0 && !isLoading) ) {
-       if (queryFromUrl || searchResults.length === 0 && !isLoading && !currentQuery) { // Load if query exists, or if it's the initial load without a query (to show default)
-         fetchBooks(queryFromUrl, pageFromUrl);
-       } else if (!queryFromUrl && !currentQuery && !isLoading) { // Initial load, no query in URL, show default "popular"
-         fetchBooks('', 1);
-       }
+    // Condition to fetch:
+    // 1. URL query/page is different from current state's query/page (after a fetch).
+    // 2. OR: URL has a query, but we have no results and are not loading (e.g. direct navigation or refresh with query).
+    // 3. OR: URL has no query, we have no current query (initial state), no results, and not loading (initial load of `/` for default).
+    const needsFetchDueToParamChange = queryFromUrl !== currentQuery || pageFromUrl !== currentPage;
+    const needsFetchForInitialQueryLoad = queryFromUrl && searchResults.length === 0 && !isLoading && !error;
+    const needsFetchForInitialDefaultLoad = !queryFromUrl && !currentQuery && searchResults.length === 0 && !isLoading && !error;
+
+    if (needsFetchDueToParamChange) {
+        fetchBooks(queryFromUrl, pageFromUrl);
+    } else if (needsFetchForInitialQueryLoad) {
+        fetchBooks(queryFromUrl, pageFromUrl);
+    } else if (needsFetchForInitialDefaultLoad) {
+        fetchBooks('', 1); // Fetch default "popular" books
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, fetchBooks]); // currentQuery, currentPage, searchResults.length, isLoading removed to rely on searchParams and fetchBooks callback
+  }, [searchParams, currentQuery, currentPage, searchResults.length, isLoading, error, fetchBooks]);
 
 
   const handleSearchSubmit = (query: string) => {
-    fetchBooks(query, 1); // Always go to page 1 for a new search
+    // When a new search is submitted, go to page 1
+    // fetchBooks will update the URL, triggering useEffect if needed,
+    // but we directly call it to initiate the fetch.
+    fetchBooks(query, 1); 
   };
 
   const handlePageChange = (newPage: number) => {
+    // fetchBooks will update the URL.
     fetchBooks(currentQuery, newPage);
     window.scrollTo(0, 0); // Scroll to top on page change
   };
@@ -146,11 +156,24 @@ export default function HomePage() {
           <p className="text-lg text-muted-foreground">No books found for "{currentQuery}". Try a different search!</p>
         </div>
       )}
-       {!isLoading && !error && searchResults.length === 0 && !currentQuery && !isLoading && ( // Added !isLoading to prevent flash of this message
+       {!isLoading && !error && searchResults.length === 0 && !currentQuery && ( 
         <div className="text-center py-10">
           <p className="text-lg text-muted-foreground">Start by searching for a book, author, or ISBN.</p>
         </div>
       )}
     </div>
+  );
+}
+
+export default function HomePageContainer() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto p-4 md:p-8 flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+        <p className="mt-4 text-xl text-muted-foreground">Loading search interface...</p>
+      </div>
+    }>
+      <HomePageContent />
+    </Suspense>
   );
 }
