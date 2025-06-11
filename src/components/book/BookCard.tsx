@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Book } from '@/types/book';
@@ -49,11 +50,9 @@ export default function BookCard({ book }: BookCardProps) {
           </p>
         </CardContent>
         <CardFooter className="p-4 flex justify-between items-center border-t">
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/books/${book.id}`} className="flex items-center gap-2">
-              <Eye className="h-4 w-4" />
-              View
-            </Link>
+          <Button variant="outline" size="sm"> {/* Removed asChild and inner Link */}
+            <Eye className="h-4 w-4" />
+            View
           </Button>
           {isLoaded && (
             <Button
