@@ -1,9 +1,11 @@
+
 'use client';
 
 import Link from 'next/link';
 import { BookOpen, Home, Heart } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/theme/theme-toggle';
 
 export default function Header() {
   const pathname = usePathname();
@@ -21,21 +23,24 @@ export default function Header() {
             <BookOpen className="h-7 w-7" />
             BiblioFind
           </Link>
-          <nav className="flex items-center space-x-2 sm:space-x-4">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-1 sm:gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-accent/10 hover:text-accent",
-                  pathname === item.href ? "text-accent font-semibold" : "text-foreground/80"
-                )}
-              >
-                <item.icon className="h-4 w-4 sm:h-5 sm:w-5" />
-                <span className="hidden sm:inline">{item.label}</span>
-              </Link>
-            ))}
-          </nav>
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            <nav className="flex items-center space-x-1 sm:space-x-2">
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-1 sm:gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-accent/10 hover:text-accent",
+                    pathname === item.href ? "text-accent font-semibold" : "text-foreground/80"
+                  )}
+                >
+                  <item.icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="hidden sm:inline">{item.label}</span>
+                </Link>
+              ))}
+            </nav>
+            <ThemeToggle />
+          </div>
         </div>
       </div>
     </header>
