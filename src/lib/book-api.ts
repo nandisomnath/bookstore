@@ -25,8 +25,13 @@ const transformOpenLibraryDocToBook = (doc: any): Book => {
   if (doc.cover_i) {
     coverImage = `${OPEN_LIBRARY_COVERS_BASE_URL}/b/id/${doc.cover_i}-L.jpg`;
   } else if (doc.isbn && doc.isbn.length > 0) {
-    coverImage = `${OPEN_LIBRARY_COVERS_BASE_URL}/b/isbn/${doc.isbn[0]}-L.jpg`;
+    // Attempt to use the first valid ISBN for cover
+    const validIsbn = doc.isbn.find((isbn: string) => /^\d{10}(\d{3})?$/.test(isbn));
+    if (validIsbn) {
+      coverImage = `${OPEN_LIBRARY_COVERS_BASE_URL}/b/isbn/${validIsbn}-L.jpg`;
+    }
   }
+
 
   const categories = doc.subject?.slice(0, 5) || [];
 
@@ -83,13 +88,21 @@ const transformOpenLibraryWorkToBook = async (workId: string, workData: any, aut
   };
 };
 
-export async function searchBooks(query: string): Promise<Book[]> {
+export interface PaginatedBookResults {
+  books: Book[];
+  numFound: number;
+  currentPage: number;
+  limitUsed: number;
+}
+
+export async function searchBooks(query: string, page: number = 1, limit: number = 20): Promise<PaginatedBookResults> {
+  let effectiveQuery = query;
   if (!query) {
-    query = "popular fiction"; // Default search for Open Library
+    effectiveQuery = "popular fiction"; // Default search for Open Library
   }
   // Request specific fields to keep response size manageable
-  const fields = "key,title,author_name,first_publish_year,isbn,cover_i,subject,first_sentence";
-  const url = `${OPEN_LIBRARY_API_BASE_URL}/search.json?q=${encodeURIComponent(query)}&fields=${fields}&limit=20`;
+  const fields = "key,title,author_name,first_publish_year,isbn,cover_i,subject,first_sentence,number_of_pages_median";
+  const url = `${OPEN_LIBRARY_API_BASE_URL}/search.json?q=${encodeURIComponent(effectiveQuery)}&fields=${fields}&page=${page}&limit=${limit}`;
   
   try {
     await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
@@ -99,10 +112,16 @@ export async function searchBooks(query: string): Promise<Book[]> {
       throw new Error('Failed to fetch books from Open Library API');
     }
     const data = await response.json();
-    return data.docs ? data.docs.map(transformOpenLibraryDocToBook) : [];
+    const books = data.docs ? data.docs.map(transformOpenLibraryDocToBook) : [];
+    return {
+      books,
+      numFound: data.numFound || 0,
+      currentPage: page,
+      limitUsed: limit,
+    };
   } catch (error) {
     console.error('Error searching books (Open Library):', error);
-    return []; 
+    return { books: [], numFound: 0, currentPage: page, limitUsed: limit }; 
   }
 }
 
@@ -124,10 +143,15 @@ export async function getBookById(workId: string): Promise<Book | null> {
       const authorPromises = workData.authors.map(async (authorRef: any) => {
         if (authorRef.author && authorRef.author.key) {
           const authorUrl = `${OPEN_LIBRARY_API_BASE_URL}${authorRef.author.key}.json`;
-          const authorResponse = await fetch(authorUrl);
-          if (authorResponse.ok) {
-            const authorData = await authorResponse.json();
-            return authorData.name || authorData.personal_name;
+          try {
+            const authorResponse = await fetch(authorUrl);
+            if (authorResponse.ok) {
+              const authorData = await authorResponse.json();
+              return authorData.name || authorData.personal_name;
+            }
+          } catch (e) {
+            console.warn(`Failed to fetch author ${authorRef.author.key}`, e);
+            return null;
           }
         }
         return null;
@@ -147,33 +171,23 @@ export async function getRecommendedBooks(currentBookId?: string): Promise<Book[
   let currentBookSubjects: string[] = [];
 
   if (currentBookId) {
-    const currentBook = await getBookById(currentBookId); // This now returns a Book from OpenLibrary
+    const currentBook = await getBookById(currentBookId); 
     if (currentBook && currentBook.categories && currentBook.categories.length > 0) {
       currentBookSubjects = currentBook.categories;
-      // Use the first category/subject of the current book for recommendations if available
       query = `subject:"${currentBook.categories[0]}"`;
     }
   }
   
-  // Re-use searchBooks for recommendations based on subject
-  // The fields requested ensure we get enough data for BookCard
   const fields = "key,title,author_name,first_publish_year,isbn,cover_i,subject,first_sentence";
-  const url = `${OPEN_LIBRARY_API_BASE_URL}/search.json?q=${encodeURIComponent(query)}&fields=${fields}&limit=9`;
-
+  // Use searchBooks to fetch recommendations, but we only need a few.
+  // searchBooks returns a PaginatedBookResults object.
   try {
-    await new Promise(resolve => setTimeout(resolve, 400)); 
-    const response = await fetch(url);
-    if (!response.ok) {
-      console.error('Open Library API error (recommendations):', response.status, await response.text());
-      throw new Error('Failed to fetch recommended books');
-    }
-    const data = await response.json();
-    let books = data.docs ? data.docs.map(transformOpenLibraryDocToBook) : [];
+    const results = await searchBooks(query, 1, 9); // Fetch up to 9 books
+    let books = results.books;
     
     if (currentBookId) {
       books = books.filter((book: Book) => book.id !== currentBookId);
     }
-     // Simple relevance boost for books sharing more subjects with the current book
     if (currentBookId && currentBookSubjects.length > 0) {
       books.sort((a, b) => {
         const aSharedSubjects = a.categories?.filter(cat => currentBookSubjects.includes(cat)).length || 0;
