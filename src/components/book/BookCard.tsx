@@ -33,11 +33,11 @@ export default function BookCard({ book }: BookCardProps) {
       <Link href={`/books/${book.id}`} className="flex flex-col h-full">
         <CardHeader className="p-0 relative">
           <Image
-            src={book.coverImage || 'https://placehold.co/400x600.png'}
+            src={book.coverImage || 'https://placehold.co/300x450.png'}
             alt={book.title}
-            width={400}
-            height={600}
-            className="w-full h-64 object-cover group-hover:opacity-90 transition-opacity"
+            width={300} // Adjusted width to maintain aspect ratio for new height
+            height={450} // Adjusted height
+            className="w-full h-56 object-cover group-hover:opacity-90 transition-opacity" // Reduced height from h-64
             data-ai-hint={book.dataAiHint || "book cover"}
           />
         </CardHeader>
@@ -50,7 +50,7 @@ export default function BookCard({ book }: BookCardProps) {
           </p>
         </CardContent>
         <CardFooter className="p-4 flex justify-between items-center border-t">
-          <Button variant="outline" size="sm"> {/* Removed asChild and inner Link */}
+          <Button variant="outline" size="sm">
             <Eye className="h-4 w-4" />
             View
           </Button>
