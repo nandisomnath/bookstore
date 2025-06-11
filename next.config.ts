@@ -28,6 +28,18 @@ const nextConfig: NextConfig = {
         hostname: 'books.google.com',
         port: '',
         pathname: '/books/content/**',
+      },
+      {
+        protocol: 'http',
+        hostname: 'books.google.com',
+        port: '',
+        pathname: '/books/publisher/content/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'books.google.com',
+        port: '',
+        pathname: '/books/publisher/content/**',
       }
     ],
   },
