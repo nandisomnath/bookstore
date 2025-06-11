@@ -1,10 +1,7 @@
 {
   "version": 2,
+  "buildCommand": "npm run vercel-build",
   "builds": [
-    {
-      "src": "next.config.js",
-      "use": "@vercel/next"
-    }
-  ],
-  "routes": []
+    { "src": "next.config.js", "use": "@vercel/next" }
+  ]
 }
