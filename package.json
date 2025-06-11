@@ -10,8 +10,6 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "postinstall": "tsc next.config.ts --module nodenext --outDir .vercel-config",
-    "vercel-build": "mv .vercel-config/next.config.js next.config.js && next build"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.8.0",
